@@ -13,6 +13,15 @@ body { font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif; background:
 .hdr h1 .upd { font-size:12px; color:#8E8E93; font-weight:400; }
 .search { margin-top:8px; display:flex; gap:8px; }
 .search input { flex:1; border:1px solid #E5E5EA; border-radius:10px; padding:9px 12px; font-size:15px; outline:none; background:#F2F2F7; }
+.sug { position:relative; }
+.sug-box { position:absolute; top:100%; left:0; right:0; background:#fff; border:1px solid #E5E5EA; border-radius:0 0 12px 12px; box-shadow:0 6px 16px rgba(0,0,0,.12); z-index:15; max-height:46vh; overflow-y:auto; display:none; }
+.sug-box.open { display:block; }
+.sug-row { display:flex; justify-content:space-between; align-items:center; padding:11px 14px; font-size:15px; color:#1C1C1E; border-bottom:1px solid #F2F2F7; }
+.sug-row:active { background:#F2F2F7; }
+.sug-row .sug-n { color:#8E8E93; font-size:13px; }
+.sug-title { padding:9px 14px 3px; font-size:11px; font-weight:700; color:#8E8E93; text-transform:uppercase; letter-spacing:.4px; }
+.hint { grid-column:1/-1; text-align:center; color:#8E8E93; padding:24px 10px 6px; font-size:14px; }
+.hint .fix { display:inline-block; background:#F2E9E1; color:#8A4B2A; font-weight:700; border-radius:14px; padding:6px 14px; margin:6px 4px 0; }
 .chips { display:flex; gap:6px; overflow-x:auto; padding:8px 0 2px; scrollbar-width:none; }
 .chips::-webkit-scrollbar { display:none; }
 .chip { flex:0 0 auto; border:1px solid #E5E5EA; background:#fff; border-radius:16px; padding:5px 12px; font-size:13px; color:#3A3A3C; }
@@ -66,7 +75,8 @@ body { font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif; background:
 <body>
 <div class="hdr">
   <h1>Каталог «Амал» <span class="upd" id="upd"></span></h1>
-  <div class="search"><input id="q" type="search" placeholder="Поиск товара…"></div>
+  <div class="search sug"><input id="q" type="search" placeholder="Поиск товара…" autocomplete="off">
+    <div class="sug-box" id="sugbox"></div></div>
   <div class="chips" id="chips"></div>
 </div>
 <div class="list" id="list"></div>
@@ -101,6 +111,68 @@ const fmt = v => v.toLocaleString("ru-RU", {minimumFractionDigits:2, maximumFrac
 const HOMO = {"a":"а","c":"с","e":"е","o":"о","p":"р","x":"х","y":"у","k":"к","m":"м","t":"т","h":"н","b":"в"};
 const normS = s => s.toLowerCase().replace(/[a-z]/g, ch => HOMO[ch] || ch);
 
+// --- индекс слов каталога для подсказок ---
+const SUGSTOP = new Set(["стекло","банка","лента","короб","коробе","блок","блоков","гр","кг","мл","лит","шт","для","пэт","дой","пак","вес"]);
+let WORDS = {};   // ключ normS(слово) -> {d: как показывать, n: в скольких товарах}
+function buildWordIndex() {
+  WORDS = {};
+  DATA.items.forEach(it => {
+    if (!priceOf(it)) return;                 // только то, что реально видно клиенту
+    const seen = new Set();
+    it.n.toLowerCase().split(/[^а-яёa-z0-9]+/).forEach(w => {
+      if (w.length < 3 || /^\d+$/.test(w)) return;
+      const key = normS(w);
+      if (SUGSTOP.has(key) || seen.has(key)) return;
+      seen.add(key);
+      if (!WORDS[key]) WORDS[key] = {d: w, n: 0};
+      WORDS[key].n += 1;
+    });
+  });
+}
+function lev(a, b) {                          // расстояние Левенштейна (для опечаток)
+  if (Math.abs(a.length - b.length) > 2) return 9;
+  const m = a.length, n = b.length;
+  let prev = Array.from({length: n + 1}, (_, j) => j);
+  for (let i = 1; i <= m; i++) {
+    const cur = [i];
+    for (let j = 1; j <= n; j++)
+      cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[n];
+}
+function suggestions(q) {
+  const keys = Object.keys(WORDS);
+  const pref = keys.filter(k => k.startsWith(q) && k !== q);
+  const sub = keys.filter(k => !k.startsWith(q) && k.includes(q));
+  const rank = arr => arr.sort((x, y) => WORDS[y].n - WORDS[x].n);
+  return rank(pref).concat(rank(sub)).slice(0, 6);
+}
+function typoFixes(q) {
+  return Object.keys(WORDS)
+    .map(k => [k, lev(q, k)]).filter(([k, d]) => d > 0 && d <= 2)
+    .sort((a, b) => a[1] - b[1] || WORDS[b[0]].n - WORDS[a[0]].n)
+    .slice(0, 3).map(([k]) => k);
+}
+function showSug(list, title) {
+  const box = document.getElementById("sugbox");
+  if (!list.length) { box.classList.remove("open"); box.innerHTML = ""; return; }
+  box.innerHTML = (title ? '<div class="sug-title">' + title + '</div>' : "") +
+    list.map(k => '<div class="sug-row" onmousedown="pickSug(\'' + k + '\')">' +
+      '<span>' + esc(WORDS[k].d) + '</span><span class="sug-n">' + WORDS[k].n + '</span></div>').join("");
+  box.classList.add("open");
+}
+function hideSug() { document.getElementById("sugbox").classList.remove("open"); }
+function pickSug(k) {
+  const inp = document.getElementById("q");
+  inp.value = WORDS[k] ? WORDS[k].d : k;
+  query = k; hideSug(); render();
+}
+function popular() {
+  return Object.keys(WORDS).filter(k => k.length >= 4)
+    .sort((a, b) => WORDS[b].n - WORDS[a].n).slice(0, 10);
+}
+
 fetch("data.json").then(r => r.json()).then(d => { DATA = d; init(); })
   .catch(() => { document.getElementById("list").innerHTML = '<div class="empty">Не удалось загрузить каталог. Проверьте интернет и откройте заново.</div>'; });
 
@@ -123,7 +195,17 @@ function init() {
   }
   mk("Все", "");
   groups.forEach(g => mk(g.replace(/^\S+\s/, ""), g));
-  document.getElementById("q").addEventListener("input", e => { query = normS(e.target.value.trim()); render(); });
+  buildWordIndex();
+  const qinp = document.getElementById("q");
+  qinp.addEventListener("input", e => {
+    query = normS(e.target.value.trim());
+    render();
+    if (!query) { showSug(popular(), "Популярное"); }
+    else if (query.length >= 2) { showSug(suggestions(query), ""); }
+    else hideSug();
+  });
+  qinp.addEventListener("focus", () => { if (!query) showSug(popular(), "Популярное"); });
+  qinp.addEventListener("blur", () => setTimeout(hideSug, 250));
   document.getElementById("send").onclick = sendOrder;
   render();
 }
@@ -161,7 +243,17 @@ function render() {
       '</div>';
     list.appendChild(card); shown++;
   });
-  if (!shown) list.innerHTML = '<div class="empty">Ничего не найдено</div>';
+  if (!shown) {
+    let html = '<div class="empty">Ничего не найдено</div>';
+    if (query && query.length >= 4) {
+      const fixes = typoFixes(query);
+      if (fixes.length)
+        html = '<div class="hint">Ничего не найдено. Возможно, вы искали:<br>' +
+          fixes.map(k => '<span class="fix" onclick="pickSug(\'' + k + '\')">' +
+            esc(WORDS[k].d) + '</span>').join("") + '</div>';
+    }
+    list.innerHTML = html;
+  }
   updateCart();
 }
 
