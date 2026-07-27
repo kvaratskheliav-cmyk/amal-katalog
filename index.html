@@ -97,6 +97,9 @@ const PT_NAMES = {k:"Крупный опт", o:"Опт", r:"Розничные",
 let DATA = null, cart = {};   // cart: idx -> qty
 
 const fmt = v => v.toLocaleString("ru-RU", {minimumFractionDigits:2, maximumFractionDigits:2}) + " ₽";
+// латинские двойники кириллицы (в названиях из 1С встречается латинская C в «Cпагетти» и т.п.)
+const HOMO = {"a":"а","c":"с","e":"е","o":"о","p":"р","x":"х","y":"у","k":"к","m":"м","t":"т","h":"н","b":"в"};
+const normS = s => s.toLowerCase().replace(/[a-z]/g, ch => HOMO[ch] || ch);
 
 fetch("data.json").then(r => r.json()).then(d => { DATA = d; init(); })
   .catch(() => { document.getElementById("list").innerHTML = '<div class="empty">Не удалось загрузить каталог. Проверьте интернет и откройте заново.</div>'; });
@@ -120,7 +123,7 @@ function init() {
   }
   mk("Все", "");
   groups.forEach(g => mk(g.replace(/^\S+\s/, ""), g));
-  document.getElementById("q").addEventListener("input", e => { query = e.target.value.trim().toLowerCase(); render(); });
+  document.getElementById("q").addEventListener("input", e => { query = normS(e.target.value.trim()); render(); });
   document.getElementById("send").onclick = sendOrder;
   render();
 }
@@ -133,7 +136,7 @@ function render() {
   let lastSec = null, shown = 0;
   DATA.items.forEach((it, idx) => {
     if (activeGroup && it.g !== activeGroup) return;
-    if (query && !it.n.toLowerCase().includes(query)) return;
+    if (query && !normS(it.n).includes(query)) return;
     const price = priceOf(it);
     if (!price) return;                    // без цены этого типа не показываем
     if (it.s !== lastSec) {
