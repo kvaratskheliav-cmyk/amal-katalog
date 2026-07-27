@@ -24,6 +24,7 @@ body { font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif; background:
 .nm { font-size:13px; font-weight:600; color:#1C1C1E; line-height:1.25; margin:6px 0 2px; flex:1; }
 .meta { font-size:11px; color:#8E8E93; }
 .pr { font-size:16px; font-weight:800; color:#A32C26; margin:4px 0; }
+.krat { font-size:11px; font-weight:700; color:#8A4B2A; background:#F2E9E1; border-radius:6px; padding:2px 8px; align-self:flex-start; margin-bottom:2px; }
 .rowsum { font-size:12px; color:#3A3A3C; font-weight:600; min-height:15px; }
 .qty { display:flex; align-items:center; gap:6px; margin-top:6px; }
 .qty button { width:34px; height:34px; border:none; border-radius:8px; background:#F2F2F7; font-size:19px; color:#1C1C1E; font-weight:700; }
@@ -105,12 +106,14 @@ function render() {
       list.appendChild(s);
     }
     const qty = cart[idx] || 0;
+    const k = it.k || 0;
     const card = document.createElement("div"); card.className = "card";
     card.innerHTML =
       '<img loading="lazy" src="' + it.i + '">' +
       '<div class="nm">' + esc(it.n) + '</div>' +
       '<div class="meta">' + esc(it.c) + (it.p ? " · " + esc(it.p) : "") + '</div>' +
       '<div class="pr">' + fmt(price) + '</div>' +
+      (k > 1 ? '<div class="krat">коробка ' + k + ' шт — заказ кратно ' + k + '</div>' : '') +
       '<div class="rowsum" id="rs' + idx + '">' + (qty ? "= " + fmt(qty * price) : "") + '</div>' +
       '<div class="qty">' +
         '<button onclick="chg(' + idx + ',-1)">−</button>' +
@@ -124,9 +127,18 @@ function render() {
 }
 
 function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
-function chg(idx, d) { setq(idx, (cart[idx] || 0) + d); const el = document.getElementById("q" + idx); if (el) el.value = cart[idx] || ""; }
+function chg(idx, d) {
+  const k = DATA.items[idx].k || 1;          // шаг «+/−» = кратность (коробка)
+  setq(idx, (cart[idx] || 0) + d * k);
+  const el = document.getElementById("q" + idx); if (el) el.value = cart[idx] || "";
+}
 function setq(idx, v) {
   v = Math.max(0, Math.floor(Number(v) || 0));
+  const k = DATA.items[idx].k || 1;
+  if (v > 0 && k > 1 && v % k !== 0) {
+    v = Math.ceil(v / k) * k;                // ручной ввод округляем ВВЕРХ до кратности
+    const el = document.getElementById("q" + idx); if (el) el.value = v;
+  }
   if (v) cart[idx] = v; else delete cart[idx];
   const it = DATA.items[idx];
   const rs = document.getElementById("rs" + idx);
