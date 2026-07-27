@@ -29,12 +29,36 @@ body { font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif; background:
 .qty { display:flex; align-items:center; gap:6px; margin-top:6px; }
 .qty button { width:34px; height:34px; border:none; border-radius:8px; background:#F2F2F7; font-size:19px; color:#1C1C1E; font-weight:700; }
 .qty input { flex:1; width:40px; text-align:center; border:1px solid #E5E5EA; border-radius:8px; padding:7px 2px; font-size:15px; font-weight:700; }
-.cartbar { position:fixed; left:0; right:0; bottom:0; background:#fff; box-shadow:0 -2px 10px rgba(0,0,0,.12); padding:10px 14px calc(10px + env(safe-area-inset-bottom)); display:flex; align-items:center; gap:12px; }
+.cartbar { position:fixed; left:0; right:0; bottom:0; background:#fff; box-shadow:0 -2px 10px rgba(0,0,0,.12); padding:10px 14px calc(10px + env(safe-area-inset-bottom)); display:flex; align-items:center; gap:12px; z-index:20; }
 .cartinfo { flex:1; }
 .cartinfo .cnt { font-size:12px; color:#8E8E93; }
 .cartinfo .sum { font-size:18px; font-weight:800; color:#1C1C1E; }
 .sendbtn { background:#A32C26; color:#fff; border:none; border-radius:12px; padding:12px 20px; font-size:15px; font-weight:700; }
 .sendbtn:disabled { background:#C7C7CC; }
+.cartopen { background:#1C1C1E; color:#fff; border:none; border-radius:12px; padding:12px 18px; font-size:15px; font-weight:700; }
+/* --- корзина (выезжающая панель) --- */
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:30; display:none; }
+.sheet { position:fixed; left:0; right:0; bottom:0; max-height:82vh; background:#fff; border-radius:16px 16px 0 0; z-index:31; display:none; flex-direction:column; }
+.sheet.open, .overlay.open { display:flex; }
+.overlay.open { display:block; }
+.sh-hdr { padding:14px 16px 8px; font-size:18px; font-weight:800; color:#1C1C1E; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #F2F2F7; }
+.sh-close { background:none; border:none; font-size:22px; color:#8E8E93; padding:4px 8px; }
+.sh-list { overflow-y:auto; padding:4px 14px; flex:1; }
+.ci { display:flex; gap:10px; align-items:center; padding:10px 0; border-bottom:1px solid #F2F2F7; }
+.ci img { width:52px; height:52px; object-fit:contain; background:#F2F2F7; border-radius:8px; flex:0 0 52px; }
+.ci-mid { flex:1; min-width:0; }
+.ci-nm { font-size:13px; font-weight:600; color:#1C1C1E; line-height:1.25; }
+.ci-pr { font-size:12px; color:#8E8E93; margin-top:2px; }
+.ci-sum { font-size:14px; font-weight:800; color:#A32C26; margin-top:2px; }
+.ci-qty { display:flex; align-items:center; gap:6px; }
+.ci-qty button { width:30px; height:30px; border:none; border-radius:8px; background:#F2F2F7; font-size:17px; font-weight:700; color:#1C1C1E; }
+.ci-qty span { min-width:26px; text-align:center; font-size:15px; font-weight:700; }
+.ci-del { background:none; border:none; color:#C7C7CC; font-size:19px; padding:4px 6px; }
+.sh-ftr { padding:12px 16px calc(12px + env(safe-area-inset-bottom)); border-top:1px solid #F2F2F7; }
+.sh-total { display:flex; justify-content:space-between; font-size:17px; font-weight:800; color:#1C1C1E; margin-bottom:10px; }
+.sh-btns { display:flex; gap:10px; }
+.sh-btns .sendbtn { flex:1; }
+.backbtn { background:#F2F2F7; color:#1C1C1E; border:none; border-radius:12px; padding:12px 16px; font-size:15px; font-weight:700; }
 .empty { grid-column:1/-1; text-align:center; color:#8E8E93; padding:40px 10px; font-size:14px; }
 .nopric { text-align:center; padding:60px 16px; color:#8E8E93; font-size:15px; }
 </style>
@@ -47,8 +71,20 @@ body { font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif; background:
 </div>
 <div class="list" id="list"></div>
 <div class="cartbar" id="cartbar" style="display:none">
-  <div class="cartinfo"><div class="cnt" id="ccnt"></div><div class="sum" id="csum"></div></div>
-  <button class="sendbtn" id="send">Отправить заказ</button>
+  <div class="cartinfo" onclick="openCart()"><div class="cnt" id="ccnt"></div><div class="sum" id="csum"></div></div>
+  <button class="cartopen" onclick="openCart()">🧺 Корзина</button>
+</div>
+<div class="overlay" id="overlay" onclick="closeCart()"></div>
+<div class="sheet" id="sheet">
+  <div class="sh-hdr">🧺 Ваш заказ <button class="sh-close" onclick="closeCart()">✕</button></div>
+  <div class="sh-list" id="shlist"></div>
+  <div class="sh-ftr">
+    <div class="sh-total"><span>Итого:</span><span id="shtotal"></span></div>
+    <div class="sh-btns">
+      <button class="backbtn" onclick="closeCart()">← Вернуться</button>
+      <button class="sendbtn" id="send">Отправить заказ</button>
+    </div>
+  </div>
 </div>
 <script>
 const tg = window.Telegram && window.Telegram.WebApp;
@@ -142,12 +178,52 @@ function setq(idx, v) {
 function updateCart() {
   const idxs = Object.keys(cart);
   const bar = document.getElementById("cartbar");
-  if (!idxs.length) { bar.style.display = "none"; return; }
+  if (!idxs.length) { bar.style.display = "none"; closeCart(); return; }
   let total = 0, n = 0;
   idxs.forEach(i => { total += cart[i] * priceOf(DATA.items[i]); n += 1; });
   bar.style.display = "flex";
   document.getElementById("ccnt").textContent = "Позиций: " + n;
   document.getElementById("csum").textContent = "Итого: " + fmt(total);
+  if (document.getElementById("sheet").classList.contains("open")) renderCartSheet();
+}
+
+function openCart() { renderCartSheet();
+  document.getElementById("sheet").classList.add("open");
+  document.getElementById("overlay").classList.add("open"); }
+function closeCart() {
+  document.getElementById("sheet").classList.remove("open");
+  document.getElementById("overlay").classList.remove("open"); }
+
+function cartChg(idx, d) {
+  const v = (cart[idx] || 0) + d;
+  if (v > 0) cart[idx] = v; else delete cart[idx];
+  const el = document.getElementById("q" + idx);         // синхронизация с карточкой каталога
+  if (el) el.value = cart[idx] || "";
+  const rs = document.getElementById("rs" + idx);
+  if (rs) rs.textContent = cart[idx] ? "= " + fmt(cart[idx] * priceOf(DATA.items[idx])) : "";
+  updateCart();
+}
+
+function renderCartSheet() {
+  const list = document.getElementById("shlist");
+  list.innerHTML = "";
+  let total = 0;
+  Object.keys(cart).forEach(i => {
+    const it = DATA.items[i], q = cart[i], pr = priceOf(it), s = q * pr;
+    total += s;
+    const row = document.createElement("div"); row.className = "ci";
+    row.innerHTML =
+      '<img loading="lazy" src="' + it.i + '">' +
+      '<div class="ci-mid"><div class="ci-nm">' + esc(it.n) + '</div>' +
+      '<div class="ci-pr">' + fmt(pr) + ' × ' + q + '</div>' +
+      '<div class="ci-sum">= ' + fmt(s) + '</div></div>' +
+      '<div class="ci-qty"><button onclick="cartChg(' + i + ',-1)">−</button>' +
+      '<span>' + q + '</span>' +
+      '<button onclick="cartChg(' + i + ',1)">+</button></div>' +
+      '<button class="ci-del" onclick="cartChg(' + i + ',-' + q + ')">✕</button>';
+    list.appendChild(row);
+  });
+  document.getElementById("shtotal").textContent = fmt(total);
 }
 function sendOrder() {
   const items = Object.keys(cart).map(i => [Number(i), cart[i]]);
