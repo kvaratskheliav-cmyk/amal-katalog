@@ -238,7 +238,7 @@ function render() {
       '<div class="rowsum" id="rs' + idx + '">' + (qty ? "= " + fmt(qty * price) : "") + '</div>' +
       '<div class="qty">' +
         '<button onclick="chg(' + idx + ',-1)">−</button>' +
-        '<input id="q' + idx + '" type="number" min="0" inputmode="numeric" value="' + (qty || "") + '" placeholder="0" onchange="setq(' + idx + ',this.value)">' +
+        '<input id="q' + idx + '" type="number" min="0" step="' + (k > 1 ? k : 1) + '" inputmode="numeric" value="' + (qty || "") + '" placeholder="0" onchange="setq(' + idx + ',this.value)">' +
         '<button onclick="chg(' + idx + ',1)">+</button>' +
       '</div>';
     list.appendChild(card); shown++;
@@ -258,16 +258,18 @@ function render() {
 }
 
 function esc(s) { const d = document.createElement("div"); d.textContent = s; return d.innerHTML; }
+function kOf(it) { return (it.k && it.k > 1) ? it.k : 1; }   // шаг заказа = кратность (коробка)
 function chg(idx, d) {
-  setq(idx, (cart[idx] || 0) + d);           // шаг «+/−» = 1 шт; кратность — только справка
-  const el = document.getElementById("q" + idx); if (el) el.value = cart[idx] || "";
+  setq(idx, (cart[idx] || 0) + d * kOf(DATA.items[idx]));    // «+/−» шагает по коробке
 }
 function setq(idx, v) {
+  const st = kOf(DATA.items[idx]);
   v = Math.max(0, Math.floor(Number(v) || 0));
+  if (v) v = Math.max(st, Math.round(v / st) * st);          // заказ только кратно коробке
   if (v) cart[idx] = v; else delete cart[idx];
-  const it = DATA.items[idx];
+  const el = document.getElementById("q" + idx); if (el) el.value = v || "";
   const rs = document.getElementById("rs" + idx);
-  if (rs) rs.textContent = v ? "= " + fmt(v * priceOf(it)) : "";
+  if (rs) rs.textContent = v ? "= " + fmt(v * priceOf(DATA.items[idx])) : "";
   updateCart();
 }
 function updateCart() {
@@ -290,13 +292,7 @@ function closeCart() {
   document.getElementById("overlay").classList.remove("open"); }
 
 function cartChg(idx, d) {
-  const v = (cart[idx] || 0) + d;
-  if (v > 0) cart[idx] = v; else delete cart[idx];
-  const el = document.getElementById("q" + idx);         // синхронизация с карточкой каталога
-  if (el) el.value = cart[idx] || "";
-  const rs = document.getElementById("rs" + idx);
-  if (rs) rs.textContent = cart[idx] ? "= " + fmt(cart[idx] * priceOf(DATA.items[idx])) : "";
-  updateCart();
+  setq(idx, (cart[idx] || 0) + d * kOf(DATA.items[idx])); // тот же шаг-коробка + синхронизация
 }
 
 function renderCartSheet() {
@@ -315,12 +311,21 @@ function renderCartSheet() {
       '<div class="ci-qty"><button onclick="cartChg(' + i + ',-1)">−</button>' +
       '<span>' + q + '</span>' +
       '<button onclick="cartChg(' + i + ',1)">+</button></div>' +
-      '<button class="ci-del" onclick="cartChg(' + i + ',-' + q + ')">✕</button>';
+      '<button class="ci-del" onclick="setq(' + i + ',0)">✕</button>';
     list.appendChild(row);
   });
   document.getElementById("shtotal").textContent = fmt(total);
 }
 function sendOrder() {
+  // страховка: заказ не уходит, если где-то количество не кратно коробке
+  const bad = Object.keys(cart).filter(i => cart[i] % kOf(DATA.items[i]) !== 0);
+  if (bad.length) {
+    bad.forEach(i => setq(Number(i), cart[i]));   // подравнять до кратного
+    alert("Количество подравнено до целых коробок:\n" +
+      bad.map(i => "• " + DATA.items[i].n + " — по " + kOf(DATA.items[i]) + " шт").join("\n") +
+      "\nПроверьте заказ и отправьте ещё раз.");
+    return;
+  }
   const items = Object.keys(cart).map(i => [Number(i), cart[i]]);
   if (!items.length) return;
   const payload = JSON.stringify({v:1, t:PT, items:items});
