@@ -210,6 +210,13 @@ function init() {
   render();
   const cartParam = params.get("cart");
   if (cartParam) restoreCart(cartParam);
+  else {
+    // корзина, отложенная при попытке заказа из кнопки меню
+    try {
+      const st = localStorage.getItem("amal_stash_" + PT);
+      if (st) { localStorage.removeItem("amal_stash_" + PT); restoreCart(st); }
+    } catch (e) {}
+  }
 }
 
 function priceOf(it) { return (it.pr && it.pr[PT]) || 0; }
@@ -364,7 +371,17 @@ function sendOrder() {
   const items = Object.keys(cart).map(i => [Number(i), cart[i]]);
   if (!items.length) return;
   const payload = JSON.stringify({v:1, t:PT, items:items});
-  if (tg && tg.sendData) { tg.sendData(payload); }
+  // из кнопки МЕНЮ Telegram не даёт отправить заказ (sendData только у reply-кнопки):
+  // сохраняем корзину и просим открыть красной кнопкой — там она восстановится
+  const fromMenu = !!(tg && tg.initData);
+  if (tg && tg.sendData && !fromMenu) { tg.sendData(payload); }
+  else if (fromMenu) {
+    try {
+      localStorage.setItem("amal_stash_" + PT,
+        Object.keys(cart).map(i => keyOf(DATA.items[i]) + "." + cart[i]).join(","));
+    } catch (e) {}
+    alert("Корзина сохранена! Отправка заказа работает из кнопки «🔴 Открыть каталог» внизу чата: закройте каталог и откройте его этой кнопкой — корзина восстановится, останется нажать «Отправить заказ».");
+  }
   else alert("Откройте каталог из бота @amal_katalog_bot, чтобы отправить заказ.");
 }
 </script>
