@@ -208,9 +208,44 @@ function init() {
   qinp.addEventListener("blur", () => setTimeout(hideSug, 250));
   document.getElementById("send").onclick = sendOrder;
   render();
+  const cartParam = params.get("cart");
+  if (cartParam) restoreCart(cartParam);
 }
 
 function priceOf(it) { return (it.pr && it.pr[PT]) || 0; }
+
+// --- повтор прошлого заказа: ?cart=ключ.колво,... (ключ = штрихкод или h+хэш имени) ---
+function djb2(s) {
+  let h = 5381 >>> 0;
+  for (const ch of String(s)) h = (((h * 33) >>> 0) + ch.codePointAt(0)) >>> 0;
+  return h.toString(16).padStart(8, "0");
+}
+function keyOf(it) {
+  const bc = String(it.b || "").replace(/\D/g, "");
+  return bc.length >= 8 ? bc : "h" + djb2(it.n1c || it.n);
+}
+function restoreCart(param) {
+  const keyIdx = {};
+  DATA.items.forEach((it, idx) => { if (priceOf(it)) keyIdx[keyOf(it)] = idx; });
+  let ok = 0, miss = 0;
+  param.split(",").forEach(pair => {
+    const d = pair.lastIndexOf(".");
+    if (d < 1) return;
+    const k = pair.slice(0, d), q = parseFloat(pair.slice(d + 1));
+    const idx = keyIdx[k];
+    if (idx === undefined || !(q > 0)) { miss++; return; }
+    setq(idx, q); ok++;
+  });
+  if (ok) {
+    const note = document.createElement("div");
+    note.className = "toc-note";
+    note.style.cssText = "background:#E8F5E9;color:#1B5E20;padding:8px 12px;font-size:13px;";
+    note.textContent = "↻ Прошлый заказ восстановлен: " + ok + " поз." +
+      (miss ? " (" + miss + " недоступны — их нет в наличии)" : "") +
+      " Проверьте корзину и отправьте.";
+    document.querySelector(".hdr").appendChild(note);
+  }
+}
 
 function render() {
   const list = document.getElementById("list");
