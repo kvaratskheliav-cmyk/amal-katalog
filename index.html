@@ -3,13 +3,18 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Каталог Амал</title>
+<title>Пандария Опт — каталог</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
+@font-face { font-family:'Montserrat'; font-weight:400; src:url('fonts/montserrat-v31-cyrillic_latin-regular.woff2') format('woff2'); font-display:swap; }
+@font-face { font-family:'Montserrat'; font-weight:600; src:url('fonts/montserrat-v31-cyrillic_latin-600.woff2') format('woff2'); font-display:swap; }
+@font-face { font-family:'Montserrat'; font-weight:800; src:url('fonts/montserrat-v31-cyrillic_latin-800.woff2') format('woff2'); font-display:swap; }
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-body { font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif; background:#F2F2F7; padding-bottom:88px; }
+body { font-family:'Montserrat',-apple-system,'Segoe UI',Roboto,Arial,sans-serif; background:#F6F1EA; padding-bottom:88px; }
 .hdr { position:sticky; top:0; z-index:10; background:#fff; padding:10px 12px; box-shadow:0 1px 4px rgba(0,0,0,.08); }
-.hdr h1 { font-size:17px; color:#1C1C1E; display:flex; justify-content:space-between; align-items:center; }
+.hdr h1 { font-size:16px; color:#1E5A3B; display:flex; justify-content:space-between; align-items:center; font-weight:800; letter-spacing:1px; }
+.hdr h1 .brand { display:flex; align-items:center; gap:8px; }
+.hdr h1 .brand img { height:28px; width:28px; border-radius:6px; }
 .hdr h1 .upd { font-size:12px; color:#8E8E93; font-weight:400; }
 .search { margin-top:8px; display:flex; gap:8px; }
 .search input { flex:1; border:1px solid #E5E5EA; border-radius:10px; padding:9px 12px; font-size:15px; outline:none; background:#F2F2F7; }
@@ -21,19 +26,19 @@ body { font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif; background:
 .sug-row .sug-n { color:#8E8E93; font-size:13px; }
 .sug-title { padding:9px 14px 3px; font-size:11px; font-weight:700; color:#8E8E93; text-transform:uppercase; letter-spacing:.4px; }
 .hint { grid-column:1/-1; text-align:center; color:#8E8E93; padding:24px 10px 6px; font-size:14px; }
-.hint .fix { display:inline-block; background:#F2E9E1; color:#8A4B2A; font-weight:700; border-radius:14px; padding:6px 14px; margin:6px 4px 0; }
+.hint .fix { display:inline-block; background:#F6F1EA; color:#1E5A3B; border:1px solid #C8A24A; font-weight:700; border-radius:14px; padding:6px 14px; margin:6px 4px 0; }
 .chips { display:flex; gap:6px; overflow-x:auto; padding:8px 0 2px; scrollbar-width:none; }
 .chips::-webkit-scrollbar { display:none; }
 .chip { flex:0 0 auto; border:1px solid #E5E5EA; background:#fff; border-radius:16px; padding:5px 12px; font-size:13px; color:#3A3A3C; }
-.chip.on { background:#A32C26; color:#fff; border-color:#A32C26; }
+.chip.on { background:#1E5A3B; color:#fff; border-color:#1E5A3B; }
 .list { padding:10px 12px; display:grid; grid-template-columns:1fr 1fr; gap:10px; }
 .sec { grid-column:1/-1; font-size:13px; font-weight:700; color:#8E8E93; margin:6px 2px 0; text-transform:uppercase; letter-spacing:.4px; }
 .card { background:#fff; border-radius:12px; padding:8px; display:flex; flex-direction:column; }
 .card img { width:100%; aspect-ratio:1; object-fit:contain; border-radius:8px; background:#F2F2F7; }
 .nm { font-size:13px; font-weight:600; color:#1C1C1E; line-height:1.25; margin:6px 0 2px; flex:1; }
 .meta { font-size:11px; color:#8E8E93; }
-.pr { font-size:16px; font-weight:800; color:#A32C26; margin:4px 0; }
-.krat { font-size:11px; font-weight:700; color:#8A4B2A; background:#F2E9E1; border-radius:6px; padding:2px 8px; align-self:flex-start; margin-bottom:2px; }
+.pr { font-size:16px; font-weight:800; color:#1E5A3B; margin:4px 0; }
+.krat { font-size:11px; font-weight:700; color:#1E5A3B; background:#F6F1EA; border:1px solid #C8A24A; border-radius:6px; padding:2px 8px; align-self:flex-start; margin-bottom:2px; }
 .rowsum { font-size:12px; color:#3A3A3C; font-weight:600; min-height:15px; }
 .qty { display:flex; align-items:center; gap:6px; margin-top:6px; }
 .qty button { width:34px; height:34px; border:none; border-radius:8px; background:#F2F2F7; font-size:19px; color:#1C1C1E; font-weight:700; }
@@ -42,9 +47,9 @@ body { font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif; background:
 .cartinfo { flex:1; }
 .cartinfo .cnt { font-size:12px; color:#8E8E93; }
 .cartinfo .sum { font-size:18px; font-weight:800; color:#1C1C1E; }
-.sendbtn { background:#A32C26; color:#fff; border:none; border-radius:12px; padding:12px 20px; font-size:15px; font-weight:700; }
+.sendbtn { background:#1E5A3B; color:#fff; border:none; border-radius:12px; padding:12px 20px; font-size:15px; font-weight:700; }
 .sendbtn:disabled { background:#C7C7CC; }
-.cartopen { background:#1C1C1E; color:#fff; border:none; border-radius:12px; padding:12px 18px; font-size:15px; font-weight:700; }
+.cartopen { background:#143D28; color:#fff; border:none; border-radius:12px; padding:12px 18px; font-size:15px; font-weight:700; }
 /* --- корзина (выезжающая панель) --- */
 .overlay { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:30; display:none; }
 .sheet { position:fixed; left:0; right:0; bottom:0; max-height:82vh; background:#fff; border-radius:16px 16px 0 0; z-index:31; display:none; flex-direction:column; }
@@ -58,7 +63,7 @@ body { font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif; background:
 .ci-mid { flex:1; min-width:0; }
 .ci-nm { font-size:13px; font-weight:600; color:#1C1C1E; line-height:1.25; }
 .ci-pr { font-size:12px; color:#8E8E93; margin-top:2px; }
-.ci-sum { font-size:14px; font-weight:800; color:#A32C26; margin-top:2px; }
+.ci-sum { font-size:14px; font-weight:800; color:#1E5A3B; margin-top:2px; }
 .ci-qty { display:flex; align-items:center; gap:6px; }
 .ci-qty button { width:30px; height:30px; border:none; border-radius:8px; background:#F2F2F7; font-size:17px; font-weight:700; color:#1C1C1E; }
 .ci-qty span { min-width:26px; text-align:center; font-size:15px; font-weight:700; }
@@ -74,7 +79,7 @@ body { font-family:-apple-system,'Segoe UI',Roboto,Arial,sans-serif; background:
 </head>
 <body>
 <div class="hdr">
-  <h1>Каталог «Амал» <span class="upd" id="upd"></span></h1>
+  <h1><span class="brand"><img src="img/brand_logo.png" alt="">ПАНДАРИЯ ОПТ</span> <span class="upd" id="upd"></span></h1>
   <div class="search sug"><input id="q" type="search" placeholder="Поиск товара…" autocomplete="off">
     <div class="sug-box" id="sugbox"></div></div>
   <div class="chips" id="chips"></div>
