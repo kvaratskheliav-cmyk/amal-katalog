@@ -377,15 +377,24 @@ function sendOrder() {
   if (!items.length) return;
   const payload = JSON.stringify({v:1, t:PT, items:items});
   // из кнопки МЕНЮ Telegram не даёт отправить заказ (sendData только у reply-кнопки):
-  // сохраняем корзину и просим открыть красной кнопкой — там она восстановится
+  // открываем чат с ботом с готовым текстом «#ZK ключ.кол-во,...» — клиент жмёт «Отправить»,
+  // бот оформляет заявку так же, как из красной кнопки
   const fromMenu = !!(tg && tg.initData);
   if (tg && tg.sendData && !fromMenu) { tg.sendData(payload); }
   else if (fromMenu) {
-    try {
-      localStorage.setItem("amal_stash_" + PT,
-        Object.keys(cart).map(i => keyOf(DATA.items[i]) + "." + cart[i]).join(","));
-    } catch (e) {}
-    alert("Корзина сохранена! Отправка заказа работает из кнопки «🔴 Открыть каталог» внизу чата: закройте каталог и откройте его этой кнопкой — корзина восстановится, останется нажать «Отправить заказ».");
+    const code = Object.keys(cart).map(i => keyOf(DATA.items[i]) + "." + cart[i]).join(",");
+    const text = "🛒 Заказ из каталога (" + items.length + " поз.)\n#ZK " + code;
+    const go = () => {
+      try {
+        tg.openTelegramLink("https://t.me/amal_katalog_bot?text=" + encodeURIComponent(text));
+        setTimeout(() => { try { tg.close(); } catch (e) {} }, 400);
+      } catch (e) {
+        try { localStorage.setItem("amal_stash_" + PT, code); } catch (e2) {}
+        alert("Не получилось открыть чат. Корзина сохранена: откройте каталог кнопкой «🔴 Открыть каталог» внизу чата и нажмите «Отправить заказ».");
+      }
+    };
+    if (tg.showAlert) tg.showAlert("Сейчас откроется чат с готовой заявкой — нажмите в нём стрелку «Отправить» ➤", go);
+    else go();
   }
   else alert("Откройте каталог из бота @amal_katalog_bot, чтобы отправить заказ.");
 }
