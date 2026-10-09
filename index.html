@@ -110,6 +110,10 @@ let PT = params.get("t") || (tg && tg.initDataUnsafe && tg.initDataUnsafe.start_
 PT = (PT || "").replace(/[^koрrs]/g, "") || "";
 const PT_NAMES = {k:"Крупный опт", o:"Опт", r:"Розничные", s:"Спец цена"};
 let DATA = null, cart = {};   // cart: idx -> qty
+// «замок»: ?f=код.код — каналы сбыта клиента (даёт бот). Товар виден, если совпал хоть один канал.
+// Без f (клиент без категорий) или если в данных нет ch — показываем всё.
+const FSET = new Set((params.get("f") || "").split(".").filter(x => /^\d+$/.test(x)).map(Number));
+function vKanale(it) { return !FSET.size || !it.ch || it.ch.some(c => FSET.has(c)); }
 
 const fmt = v => v.toLocaleString("ru-RU", {minimumFractionDigits:2, maximumFractionDigits:2}) + " ₽";
 // латинские двойники кириллицы (в названиях из 1С встречается латинская C в «Cпагетти» и т.п.)
@@ -188,7 +192,7 @@ function init() {
     document.body.innerHTML = '<div class="nopric">Откройте каталог кнопкой в боте <b>@amal_katalog_bot</b> — тогда будут видны ваши цены.</div>';
     return;
   }
-  const groups = [...new Set(DATA.items.map(i => i.g))];
+  const groups = [...new Set(DATA.items.filter(i => priceOf(i)).map(i => i.g))];
   const chips = document.getElementById("chips");
   const mk = (label, val) => {
     const b = document.createElement("button"); b.className = "chip" + (val === activeGroup ? " on" : "");
@@ -224,7 +228,8 @@ function init() {
   }
 }
 
-function priceOf(it) { return (it.pr && it.pr[PT]) || 0; }
+// цена типа клиента; 0 = товар клиенту не показываем (нет цены этого типа или не его канал)
+function priceOf(it) { return (vKanale(it) && it.pr && it.pr[PT]) || 0; }
 
 // --- повтор прошлого заказа: ?cart=ключ.колво,... (ключ = штрихкод или h+хэш имени) ---
 function djb2(s) {
@@ -253,7 +258,7 @@ function restoreCart(param) {
     note.className = "toc-note";
     note.style.cssText = "background:#E8F5E9;color:#1B5E20;padding:8px 12px;font-size:13px;";
     note.textContent = "↻ Прошлый заказ восстановлен: " + ok + " поз." +
-      (miss ? " (" + miss + " недоступны — их нет в наличии)" : "") +
+      (miss ? " (" + miss + " сейчас недоступны)" : "") +
       " Проверьте корзину и отправьте.";
     document.querySelector(".hdr").appendChild(note);
   }
