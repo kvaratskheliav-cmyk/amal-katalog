@@ -217,7 +217,7 @@ let activeGroup = "", query = "";
 function init() {
   document.getElementById("upd").textContent = "цены на " + DATA.updated;
   if (!PT || !PT_NAMES[PT]) {
-    document.body.innerHTML = '<div class="nopric">Откройте каталог кнопкой в боте <b>@amal_katalog_bot</b> — тогда будут видны ваши цены.</div>';
+    document.body.innerHTML = '<div class="nopric">Откройте каталог кнопкой в боте <b>@amal_katalog_bot</b>.</div>';
     return;
   }
   const groups = [...new Set(DATA.items.filter(i => priceOf(i)).map(i => i.g))];
