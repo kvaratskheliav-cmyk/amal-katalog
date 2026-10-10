@@ -205,7 +205,7 @@ async function loadAll(popytka) {
     if (popytka < 2) { await new Promise(r => setTimeout(r, 2500)); return loadAll(popytka + 1); }
   }
   if (PT && PT_NAMES[PT] && !d.items.some(it => it.pr && it.pr[PT])) {   // цен нет: нет ключа или он не от этого типа
-    document.body.innerHTML = '<div class="nopric">Откройте каталог кнопкой в боте <b>@amal_katalog_bot</b> — тогда будут видны ваши цены.</div>';
+    document.body.innerHTML = '<div class="nopric">Каталог обновлён. Напишите боту <b>@amal_katalog_bot</b> слово «каталог» — он пришлёт новую кнопку с вашими ценами.</div>';
     return;
   }
   DATA = d; init();
