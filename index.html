@@ -182,7 +182,35 @@ function popular() {
     .sort((a, b) => WORDS[b].n - WORDS[a].n).slice(0, 10);
 }
 
-fetch("data.json").then(r => r.json()).then(d => { DATA = d; init(); })
+// Цены под замком: бот даёт в ссылке ключ своего типа цен (&k=...), цены лежат зашифрованными
+// в p_<тип>.bin. Чужой тип цен без его ключа не открыть. v — метка сборки: цены и список товаров
+// должны быть от одной сборки, иначе цены «съедут» на соседние товары.
+async function loadPrices(d) {
+  const kk = params.get("k");
+  if (!kk || !PT) return false;
+  let b64 = kk.replace(/-/g, "+").replace(/_/g, "/"); while (b64.length % 4) b64 += "=";
+  const raw = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey("raw", raw, "AES-GCM", false, ["decrypt"]);
+  const buf = new Uint8Array(await (await fetch("p_" + PT + ".bin", {cache: "no-store"})).arrayBuffer());
+  const plain = await crypto.subtle.decrypt({name: "AES-GCM", iv: buf.slice(0, 12)}, key, buf.slice(12));
+  const o = JSON.parse(new TextDecoder().decode(plain));
+  if (o.v !== d.v || o.p.length !== d.items.length) throw new Error("сборка не совпала");
+  d.items.forEach((it, i) => { it.pr = {}; if (o.p[i]) it.pr[PT] = o.p[i]; });
+  return true;
+}
+async function loadAll(popytka) {
+  const d = await (await fetch("data.json", {cache: "no-store"})).json();
+  try { await loadPrices(d); }
+  catch (e) {
+    if (popytka < 2) { await new Promise(r => setTimeout(r, 2500)); return loadAll(popytka + 1); }
+  }
+  if (PT && PT_NAMES[PT] && !d.items.some(it => it.pr && it.pr[PT])) {   // цен нет: нет ключа или он не от этого типа
+    document.body.innerHTML = '<div class="nopric">Откройте каталог кнопкой в боте <b>@amal_katalog_bot</b> — тогда будут видны ваши цены.</div>';
+    return;
+  }
+  DATA = d; init();
+}
+loadAll(0)
   .catch(() => { document.getElementById("list").innerHTML = '<div class="empty">Не удалось загрузить каталог. Проверьте интернет и откройте заново.</div>'; });
 
 let activeGroup = "", query = "";
