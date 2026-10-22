@@ -113,6 +113,8 @@ let DATA = null, cart = {};   // cart: idx -> qty
 // «замок»: ?f=код.код — каналы сбыта клиента (даёт бот). Товар виден, если совпал хоть один канал.
 // Без f (клиент без категорий) или если в данных нет ch — показываем всё.
 const FSET = new Set((params.get("f") || "").split(".").filter(x => /^\d+$/.test(x)).map(Number));
+const FLAGS = {"Россия":"🇷🇺","Китай":"🇨🇳","Италия":"🇮🇹","Вьетнам":"🇻🇳","Таиланд":"🇹🇭","Польша":"🇵🇱","Корея":"🇰🇷","Индонезия":"🇮🇩","Турция":"🇹🇷","Индия":"🇮🇳","Египет":"🇪🇬","Шри-Ланка":"🇱🇰"};
+function flagOf(c) { return FLAGS[c] ? FLAGS[c] + " " : ""; }
 function vKanale(it) { return !FSET.size || !it.ch || it.ch.some(c => FSET.has(c)); }
 
 const fmt = v => v.toLocaleString("ru-RU", {minimumFractionDigits:2, maximumFractionDigits:2}) + " ₽";
@@ -312,7 +314,7 @@ function render() {
     card.innerHTML =
       '<img loading="lazy" src="' + it.i + '">' +
       '<div class="nm">' + esc(it.n) + '</div>' +
-      '<div class="meta">' + esc(it.c) + (it.p ? " · " + esc(it.p) : "") + '</div>' +
+      '<div class="meta">' + flagOf(it.c) + esc(it.c) + (it.p ? " · " + esc(it.p) : "") + '</div>' +
       '<div class="pr">' + fmt(price) + '</div>' +
       (k > 1 ? '<div class="krat">коробка ' + k + ' шт — заказ кратно ' + k + '</div>' : '') +
       '<div class="rowsum" id="rs' + idx + '">' + (qty ? "= " + fmt(qty * price) : "") + '</div>' +
