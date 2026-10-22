@@ -37,6 +37,7 @@ body { font-family:'Montserrat',-apple-system,'Segoe UI',Roboto,Arial,sans-serif
 .card img { width:100%; aspect-ratio:1; object-fit:contain; border-radius:8px; background:#F2F2F7; }
 .nm { font-size:13px; font-weight:600; color:#1C1C1E; line-height:1.25; margin:6px 0 2px; flex:1; }
 .meta { font-size:11px; color:#8E8E93; }
+.meta .fl { height:11px; width:auto; vertical-align:-1px; margin-right:4px; border-radius:2px; box-shadow:0 0 0 1px rgba(0,0,0,.18); }
 .pr { font-size:16px; font-weight:800; color:#1E5A3B; margin:4px 0; }
 .krat { font-size:11px; font-weight:700; color:#1E5A3B; background:#F6F1EA; border:1px solid #C8A24A; border-radius:6px; padding:2px 8px; align-self:flex-start; margin-bottom:2px; }
 .rowsum { font-size:12px; color:#3A3A3C; font-weight:600; min-height:15px; }
@@ -113,8 +114,9 @@ let DATA = null, cart = {};   // cart: idx -> qty
 // «замок»: ?f=код.код — каналы сбыта клиента (даёт бот). Товар виден, если совпал хоть один канал.
 // Без f (клиент без категорий) или если в данных нет ch — показываем всё.
 const FSET = new Set((params.get("f") || "").split(".").filter(x => /^\d+$/.test(x)).map(Number));
-const FLAGS = {"Россия":"🇷🇺","Китай":"🇨🇳","Италия":"🇮🇹","Вьетнам":"🇻🇳","Таиланд":"🇹🇭","Польша":"🇵🇱","Корея":"🇰🇷","Индонезия":"🇮🇩","Турция":"🇹🇷","Индия":"🇮🇳","Египет":"🇪🇬","Шри-Ланка":"🇱🇰"};
-function flagOf(c) { return FLAGS[c] ? FLAGS[c] + " " : ""; }
+// 22.10.2026: флажки картинками (эмодзи-флаги на Windows показываются буквами «RU»)
+const FLAGS = {"Россия":"ru","Китай":"cn","Италия":"it","Вьетнам":"vn","Таиланд":"th","Польша":"pl","Корея":"kr","Индонезия":"id","Турция":"tr","Индия":"in","Египет":"eg","Шри-Ланка":"lk"};
+function flagOf(c) { return FLAGS[c] ? '<img class="fl" src="flags/' + FLAGS[c] + '.png" alt="">' : ""; }
 function vKanale(it) { return !FSET.size || !it.ch || it.ch.some(c => FSET.has(c)); }
 
 const fmt = v => v.toLocaleString("ru-RU", {minimumFractionDigits:2, maximumFractionDigits:2}) + " ₽";
@@ -316,7 +318,7 @@ function render() {
       '<div class="nm">' + esc(it.n) + '</div>' +
       '<div class="meta">' + flagOf(it.c) + esc(it.c) + (it.p ? " · " + esc(it.p) : "") + '</div>' +
       '<div class="pr">' + fmt(price) + '</div>' +
-      (k > 1 ? '<div class="krat">коробка ' + k + ' шт — заказ кратно ' + k + '</div>' : '') +
+      (k >= 1 ? '<div class="krat">' + (k > 1 ? 'коробка ' + k + ' шт — заказ кратно ' + k : 'кратность 1 — заказ поштучно') + '</div>' : '') +
       '<div class="rowsum" id="rs' + idx + '">' + (qty ? "= " + fmt(qty * price) : "") + '</div>' +
       '<div class="qty">' +
         '<button onclick="chg(' + idx + ',-1)">−</button>' +
